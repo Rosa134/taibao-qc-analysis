@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>太平洋保险 · 智能质检分析体系架构图</title>
+<script src="html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#f3f7fb;
+  --card:#ffffff;
+  --navy:#0f172a;
+  --blue:#2563eb;
+  --blue-light:#dbeafe;
+  --indigo:#4f46e5;
+  --indigo-light:#e0e7ff;
+  --green:#059669;
+  --green-light:#d1fae5;
+  --orange:#ea580c;
+  --orange-light:#ffedd5;
+  --red:#dc2626;
+  --red-light:#fee2e2;
+  --yellow:#d97706;
+  --yellow-light:#fef3c7;
+  --gray:#64748b;
+  --border:#e2e8f0;
+  --shadow:0 10px 25px rgba(15,23,42,.08);
+  --shadow-sm:0 4px 12px rgba(15,23,42,.06);
+  --radius:18px;
+}
+
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+body{
+  font-family: "PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,sans-serif;
+  background: radial-gradient(circle at top left,#dbeafe 0%,transparent 28%),
+              radial-gradient(circle at top right,#ede9fe 0%,transparent 26%),
+              linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+  color:#1e293b;
+  padding:28px 28px 60px;
+}
+
+.container{
+  max-width:1800px; margin:0 auto;
+  background:rgba(255,255,255,.82);
+  backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:30px; padding:34px;
+  box-shadow:0 20px 60px rgba(15,23,42,.08),inset 0 1px 0 rgba(255,255,255,.8);
+}
+
+/* ── clickable modules ── */
+.module {
+  cursor: pointer; position: relative;
+  transition: outline 0.12s, box-shadow 0.12s, transform 0.08s;
+}
+.module:hover {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.15);
+  transform: translateY(-2px);
+  z-index: 5;
+}
+.module:active { transform: scale(0.985); }
+.module .copy-tip {
+  display: none; position: absolute;
+  top: -30px; left: 50%; transform: translateX(-50%);
+  background: var(--navy); color: #fff;
+  font-size: 11px; padding: 4px 12px; border-radius: 8px;
+  white-space: nowrap; z-index: 20; pointer-events: none;
+}
+.module:hover .copy-tip { display: block; }
+.module.copied .copy-tip { background: var(--green); }
+.module.copied .copy-tip::after { content: " ✓"; }
+
+/* ── toolbar ── */
+.toolbar {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; gap: 10px; z-index: 100;
+}
+.toolbar button {
+  padding: 10px 20px; border-radius: 12px; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-png { background: var(--blue); color: #fff; }
+.btn-png:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.btn-svg { background: var(--indigo); color: #fff; }
+.btn-svg:hover { background: #4338ca; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.btn-copy { background: #fff; color: var(--navy); border: 1.5px solid var(--border); }
+.btn-copy:hover { border-color: var(--blue); transform: translateY(-1px); }
+
+.toast {
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #fff; padding: 12px 28px; border-radius: 14px;
+  font-size: 14px; font-weight: 600; z-index: 200;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* ═══════ ORIGINAL STYLES ═══════ */
+.hero{
+  position:relative; overflow:hidden; border-radius:26px;
+  padding:34px 40px;
+  background: linear-gradient(135deg,#0f172a 0%,#1e3a8a 45%,#312e81 100%);
+  color:#fff; margin-bottom:28px;
+}
+.hero::before{
+  content:""; position:absolute; width:500px; height:500px;
+  background:rgba(255,255,255,.05); border-radius:50%; right:-180px; top:-220px;
+}
+.hero::after{
+  content:""; position:absolute; width:240px; height:240px;
+  background:rgba(255,255,255,.04); border-radius:50%; left:-80px; bottom:-120px;
+}
+.hero h1{ position:relative; font-size:38px; font-weight:900; letter-spacing:1px; margin-bottom:10px; }
+.hero p{ position:relative; max-width:1200px; line-height:1.8; font-size:14px; opacity:.92; }
+.hero-tags{ position:relative; margin-top:22px; display:flex; flex-wrap:wrap; gap:12px; }
+.hero-tag{
+  padding:10px 16px; border-radius:999px; background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.15); font-size:13px; font-weight:600; backdrop-filter:blur(6px);
+  display:flex; align-items:center; gap:8px;
+}
+.hero-tag-icon{ width:18px; height:18px; }
+
+.section{ margin-top:34px; }
+.section-title{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+.section-title .dot{
+  width:14px; height:14px; border-radius:50%;
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  box-shadow:0 0 0 8px rgba(37,99,235,.12);
+}
+.section-title h2{ font-size:24px; color:var(--navy); font-weight:900; }
+
+.core-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+.core-card{
+  position:relative; overflow:hidden; background:var(--card);
+  border-radius:24px; padding:24px; border:1px solid var(--border);
+  box-shadow:var(--shadow-sm); transition:.25s ease;
+}
+.core-card::before{ content:""; position:absolute; inset:0; background:linear-gradient(135deg,rgba(37,99,235,.06),transparent); }
+.core-icon{ width:48px; height:48px; margin-bottom:16px; }
+.core-title{ font-size:20px; font-weight:800; margin-bottom:8px; color:var(--navy); }
+.core-desc{ color:var(--gray); font-size:14px; line-height:1.7; }
+
+.flow-wrapper{ margin-top:28px; display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; }
+.flow-node{
+  min-width:240px; padding:18px 22px; border-radius:20px;
+  text-align:center; font-weight:800; line-height:1.8; box-shadow:var(--shadow-sm);
+}
+.flow-node.blue{ background:linear-gradient(135deg,#dbeafe,#eff6ff); color:#1d4ed8; }
+.flow-node.indigo{ background:linear-gradient(135deg,#e0e7ff,#eef2ff); color:#4338ca; }
+.flow-node.green{ background:linear-gradient(135deg,#d1fae5,#ecfdf5); color:#047857; }
+.flow-arrow{ font-size:34px; color:#94a3b8; font-weight:900; }
+
+.phase-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+.phase-card{
+  position:relative; background:#fff; border-radius:24px; padding:24px;
+  border:1px solid var(--border); box-shadow:var(--shadow-sm); overflow:hidden;
+}
+.phase-card.active{ border:2px solid #3b82f6; background: linear-gradient(180deg,#eff6ff 0%,#ffffff 100%); }
+.phase-badge{ position:absolute; right:18px; top:18px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; }
+.phase-badge.active{ background:#dbeafe; color:#1d4ed8; }
+.phase-badge.next{ background:#f1f5f9; color:#64748b; }
+.phase-number{
+  width:54px; height:54px; border-radius:18px; display:flex; align-items:center;
+  justify-content:center; font-size:22px; font-weight:900; color:#fff;
+  background:linear-gradient(135deg,#2563eb,#4f46e5); margin-bottom:18px;
+}
+.phase-title-text{ font-size:22px; font-weight:900; color:var(--navy); margin-bottom:10px; }
+.phase-goal{ font-size:14px; line-height:1.8; color:#334155; margin-bottom:14px; }
+.phase-list{ padding-left:18px; color:var(--gray); line-height:1.9; font-size:14px; }
+
+.main-grid{ display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.system-card{ background:#fff; border-radius:28px; overflow:hidden; border:1px solid var(--border); box-shadow:var(--shadow); }
+.system-header{ padding:22px 26px; font-size:24px; font-weight:900; color:#fff; }
+.system-header.qc{ background: linear-gradient(135deg,#1d4ed8,#1e3a8a); }
+.system-header.an{ background: linear-gradient(135deg,#4f46e5,#312e81); }
+.system-body{ padding:22px; }
+
+.agent-block{ margin-bottom:20px; }
+.agent-title{ display:flex; align-items:center; gap:10px; padding:14px 18px; border-radius:18px; font-size:18px; font-weight:900; margin-bottom:14px; }
+.agent-title.qc{ background:#eff6ff; color:#1d4ed8; }
+.agent-title.an{ background:#eef2ff; color:#4338ca; }
+
+.detail-card{
+  background:#fff; border:1px solid #e5e7eb; border-radius:18px;
+  padding:18px; margin-bottom:14px; box-shadow:var(--shadow-sm);
+}
+.detail-header{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+.detail-header strong{ font-size:16px; color:#0f172a; }
+.tag{ padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+.tag-scene{ background:#fef3c7; color:#92400e; }
+.tag-risk{ background:#fee2e2; color:#991b1b; }
+.tag-output{ background:#dcfce7; color:#166534; }
+.detail-content{ font-size:13px; line-height:1.9; color:#475569; }
+.detail-content strong{ color:#0f172a; }
+
+.flow-divider{
+  text-align:center; padding:14px; margin:12px 0;
+  font-weight:800; color:#64748b; background:#f8fafc;
+  border-radius:16px; border:1px dashed #cbd5e1;
+}
+
+.mini-card{
+  background: linear-gradient(180deg,#fafaff 0%,#ffffff 100%);
+  border:1px solid #dbe4ff; border-radius:18px; padding:18px; margin-bottom:14px;
+}
+.mini-card strong{ color:#312e81; }
+.mini-title{ font-size:16px; font-weight:900; margin-bottom:10px; color:#312e81; }
+.mini-text{ font-size:13px; line-height:1.9; color:#475569; }
+.output-box{
+  margin-top:12px; padding:12px 14px; border-radius:14px;
+  background:#f8fafc; border-left:4px solid #4f46e5;
+  font-size:12px; line-height:1.8; color:#475569;
+}
+
+.scenario-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
+.scenario-card{
+  background:#fff; border-radius:22px; padding:20px;
+  border:1px solid #fde68a; box-shadow:var(--shadow-sm);
+  background: linear-gradient(180deg,#fffdf5 0%,#ffffff 100%);
+}
+.scenario-title{ text-align:center; font-size:18px; font-weight:900; color:#92400e; margin-bottom:18px; }
+.scenario-sub{ margin-bottom:14px; }
+.scenario-label{ display:inline-block; margin-bottom:8px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:800; }
+.scenario-label.blue{ background:#dbeafe; color:#1d4ed8; }
+.scenario-label.indigo{ background:#e0e7ff; color:#4338ca; }
+.scenario-sub ul{ padding-left:18px; line-height:1.9; color:#475569; font-size:13px; }
+
+.loop{
+  margin-top:20px; padding:28px; border-radius:28px;
+  background: linear-gradient(135deg,#f8fbff,#eef4ff);
+  border:1px solid #dbeafe;
+}
+.loop-flow{ display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; }
+.loop-node{
+  min-width:240px; padding:20px; border-radius:20px;
+  text-align:center; font-weight:900; box-shadow:var(--shadow-sm);
+}
+.loop-node small{ display:block; margin-top:8px; line-height:1.8; font-weight:500; opacity:.85; }
+.loop-node.blue{ background:#dbeafe; color:#1d4ed8; }
+.loop-node.indigo{ background:#e0e7ff; color:#4338ca; }
+.loop-node.green{ background:#d1fae5; color:#047857; }
+.loop-arrow{ font-size:32px; font-weight:900; color:#64748b; }
+
+.feedback-row{ display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:24px; }
+.feedback-item{
+  padding:10px 16px; background:#fff; border:1px solid #dbeafe;
+  border-radius:999px; font-size:13px; color:#334155; box-shadow:var(--shadow-sm);
+}
+
+@media(max-width:1500px){ .scenario-grid{ grid-template-columns:repeat(3,1fr); } }
+@media(max-width:1200px){
+  .main-grid{ grid-template-columns:1fr; }
+  .core-grid{ grid-template-columns:repeat(2,1fr); }
+  .scenario-grid{ grid-template-columns:repeat(2,1fr); }
+}
+@media(max-width:768px){
+  body{ padding:14px; }
+  .container{ padding:18px; }
+  .hero{ padding:24px; }
+  .hero h1{ font-size:28px; line-height:1.4; }
+  .core-grid,.phase-grid,.scenario-grid{ grid-template-columns:1fr; }
+  .flow-wrapper,.loop-flow{ flex-direction:column; }
+  .flow-arrow,.loop-arrow{ transform:rotate(90deg); }
+}
+
+@media print {
+  .toolbar, .module { cursor: default !important; }
+  .module:hover { outline: none !important; box-shadow: none !important; transform: none !important; }
+  .module .copy-tip { display: none !important; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container" id="canvas">
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero module" data-module="hero" title="点击复制此模块">
+    <span class="copy-tip">点击复制</span>
+    <h1>太平洋保险 · 智能质检分析体系整体架构图</h1>
+    <p>
+      建设思路：会话维度质检 agent 单通判定 → 客户维度分析 agent 多通汇总 →
+      可复用话术 · 应对策略 · SOP 优化建议 ｜ 标杆座席 茹芬（7000332）｜
+      5月通话 314条 · 客户 245
+    </p>
+    <div class="hero-tags">
+      <div class="hero-tag"><img src="icons/icon-shield.svg" class="hero-tag-icon" alt="">合规零风险</div>
+      <div class="hero-tag"><img src="icons/icon-standards.svg" class="hero-tag-icon" alt="">服务标准化</div>
+      <div class="hero-tag"><img src="icons/icon-analysis.svg" class="hero-tag-icon" alt="">分析可落地</div>
+      <div class="hero-tag"><img src="icons/icon-operation.svg" class="hero-tag-icon" alt="">运营可转化</div>
+      <div class="hero-tag"><svg style="width:18px;height:18px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <rect x="28" y="28" width="64" height="64" rx="10" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M45 28V20M60 28V20M75 28V20M45 92v8M60 92v8M75 92v8M28 45H20M28 60H20M28 75H20M92 45h8M92 60h8M92 75h8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M45 45h30v30H45z" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 52h16v16H52z" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="45" cy="45" r="2.5" stroke="#2563eb" stroke-width="2.5"/>
+  <circle cx="75" cy="45" r="2.5" stroke="#2563eb" stroke-width="2.5"/>
+  <circle cx="45" cy="75" r="2.5" stroke="#2563eb" stroke-width="2.5"/>
+  <circle cx="75" cy="75" r="2.5" stroke="#2563eb" stroke-width="2.5"/>
+</svg>AI Agent 驱动</div>
+    </div>
+  </section>
+
+  <!-- ═══ CORE ═══ -->
+  <section class="section">
+    <div class="section-title">
+      <div class="dot"></div>
+      <h2>一、方案核心定位</h2>
+    </div>
+    <div class="core-grid">
+      <div class="core-card module" data-module="core-compliance" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <img src="icons/icon-shield.svg" class="core-icon" alt="">
+        <div class="core-title">合规零风险</div>
+        <div class="core-desc">建立高风险表达识别体系，实现违规话术实时发现与一票否决。</div>
+      </div>
+      <div class="core-card module" data-module="core-service" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <img src="icons/icon-standards.svg" class="core-icon" alt="">
+        <div class="core-title">服务标准化</div>
+        <div class="core-desc">建立统一服务礼仪、统一承接规范、统一场景 SOP。</div>
+      </div>
+      <div class="core-card module" data-module="core-analysis" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <img src="icons/icon-analysis.svg" class="core-icon" alt="">
+        <div class="core-title">分析可落地</div>
+        <div class="core-desc">从单通质检延伸至客户维度分析，形成真实经营洞察。</div>
+      </div>
+      <div class="core-card module" data-module="core-operation" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <img src="icons/icon-operation.svg" class="core-icon" alt="">
+        <div class="core-title">运营可转化</div>
+        <div class="core-desc">沉淀金牌话术、应对策略、标准 SOP，实现持续迭代。</div>
+      </div>
+    </div>
+
+    <div class="flow-wrapper">
+      <div class="flow-node blue module" data-module="flow-qc" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        会话维度<br>质检 Agent 单通判定
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node indigo module" data-module="flow-analysis" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        客户维度<br>分析 Agent 多通汇总
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node green module" data-module="flow-output" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        可复用话术<br>应对策略 · SOP 优化
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PHASE ═══ -->
+  <section class="section">
+    <div class="section-title">
+      <div class="dot"></div>
+      <h2>二、三阶段实施路径</h2>
+    </div>
+    <div class="phase-grid">
+      <div class="phase-card active module" data-module="phase1" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="phase-badge active">当前阶段</div>
+        <div class="phase-number">1</div>
+        <div class="phase-title-text">阶段1 · 可行性验证</div>
+        <div class="phase-goal">目标：通过标杆座席数据验证分析内容及效果可行性。</div>
+        <ul class="phase-list">
+          <li>座席：茹芬（7000332）</li>
+          <li>数据量：314条通话 / 245客户</li>
+          <li>验证整体分析框架有效性</li>
+        </ul>
+      </div>
+      <div class="phase-card module" data-module="phase2" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="phase-badge next">后续阶段</div>
+        <div class="phase-number">2</div>
+        <div class="phase-title-text">阶段2 · 调整框架</div>
+        <div class="phase-goal">目标：根据客户实际与沟通结果调整框架。</div>
+        <ul class="phase-list">
+          <li>适量增加真实数据</li>
+          <li>提高贴合度与可行性</li>
+          <li>优化判断规则与权重</li>
+        </ul>
+      </div>
+      <div class="phase-card module" data-module="phase3" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="phase-badge next">后续阶段</div>
+        <div class="phase-number">3</div>
+        <div class="phase-title-text">阶段3 · 扩大范围</div>
+        <div class="phase-goal">前置条件：分析价值获得业务认可。</div>
+        <ul class="phase-list">
+          <li>扩大分析数据规模</li>
+          <li>准确率持续调优</li>
+          <li>形成标准化运营体系</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MAIN ═══ -->
+  <section class="section">
+    <div class="section-title">
+      <div class="dot"></div>
+      <h2>三、核心能力矩阵：质检体系 + 智能分析体系</h2>
+    </div>
+    <div class="main-grid">
+
+      <!-- LEFT: QC -->
+      <div class="system-card module" data-module="qc-system" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="system-header qc"><svg style="width:24px;height:24px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <rect x="30" y="22" width="60" height="86" rx="8" ry="8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="42" y="14" width="36" height="16" rx="6" ry="6" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 42h28M46 54h28M46 66h28M46 78h18" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>质检体系 · 会话维度（单通电话判定）</div>
+        <div class="system-body">
+
+          <div class="agent-block">
+            <div class="agent-title qc"><svg width="14" height="14" viewBox="0 0 14 14" style="vertical-align:-2px;display:inline-block"><circle cx="7.0" cy="7.0" r="5.5" fill="#dc2626"/></svg> 1.1 合规问题质检 Agent</div>
+
+            <div class="detail-card module" data-module="qc-exaggerate" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>① 夸大误导 / 违规</strong>
+                <span class="tag tag-scene">网销 / 兜底 / 转保</span>
+              </div>
+              <div class="detail-content">
+                <strong>质检标准：</strong>夸大保障范围、产品收益、活动力度；虚假报价、模糊报价、先低后高；违规返现、返利、利益补贴；诋毁同业、诱导性比较。<br><br>
+                <span class="tag tag-risk">判断逻辑</span> 出现"承诺结果 / 差价 / 收益 / 返利"等高风险表达即命中。<br><br>
+                <span class="tag tag-output">输出</span> 命中片段 ｜ 风险类型 ｜ 风险等级 ｜ 告警原因 ｜ 建议替代
+              </div>
+            </div>
+
+            <div class="detail-card module" data-module="qc-public" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>② 舆情 / 曝光风险</strong>
+                <span class="tag tag-scene">全场景监控</span>
+              </div>
+              <div class="detail-content">
+                <strong>质检标准：</strong>激化客户情绪、激怒性话术、敷衍回避、推责冷处理等。<br><br>
+                <strong>重点场景：</strong>客户明确不满、多轮异议未闭环、结束时情绪未平复。<br><br>
+                <span class="tag tag-output">输出</span> 风险触发点 ｜ 情绪变化 ｜ 投诉隐患 ｜ 是否升级人工
+              </div>
+            </div>
+
+            <div class="detail-card module" data-module="qc-abuse" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>③ 辱骂威胁客户</strong>
+                <span class="tag tag-risk">零容忍</span>
+              </div>
+              <div class="detail-content">
+                <strong>质检标准：</strong>人身攻击、恶意嘲讽、阴阳怪气、威胁性表达、压迫式沟通等。<br><br>
+                不区分客户类型与业务场景，出现即判高风险。<br><br>
+                <span class="tag tag-output">输出</span> 命中原话 ｜ 攻击类型 ｜ 是否一票否决 ｜ 标准替代话术
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-divider">▼ 单通质检结果汇入客户维度分析 ▼</div>
+
+          <div class="agent-block">
+            <div class="agent-title qc"><svg width="14" height="14" viewBox="0 0 14 14" style="vertical-align:-2px;display:inline-block"><circle cx="7.0" cy="7.0" r="5.5" fill="#d97706"/></svg> 1.2 服务礼仪质检 Agent</div>
+
+            <div class="detail-card module" data-module="qc-opening" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>① 开场自报家门</strong>
+                <span class="tag tag-scene">兜底 / 转保 / 网销</span>
+              </div>
+              <div class="detail-content">
+                身份清晰 + 公司清晰 + 业务清晰 + 来电目的清晰。<br>
+                重点判断是否一次性交代清楚，无模糊身份开场。
+              </div>
+            </div>
+
+            <div class="detail-card module" data-module="qc-politeness" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>② 礼貌用语</strong>
+                <span class="tag tag-scene">高异议客户重点</span>
+              </div>
+              <div class="detail-content">
+                对异议先接住再解释，避免命令式、催促式表达。<br><br>
+                <span class="tag tag-output">输出</span> 礼貌程度评分 ｜ 生硬机械表达 ｜ "有礼貌但无沟通感"
+              </div>
+            </div>
+
+            <div class="detail-card module" data-module="qc-tone" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>③ 语气场景适配</strong>
+                <span class="tag tag-scene">四场景分层</span>
+              </div>
+              <div class="detail-content">
+                多年续：亲切高效 ｜ 首年续：耐心稳妥 ｜ 转保：逻辑清晰 ｜ 兜底：官方可信。<br><br>
+                <span class="tag tag-output">输出</span> 场景匹配度 ｜ 营销感 ｜ 压迫感 ｜ 套路化问题
+              </div>
+            </div>
+
+            <div class="detail-card module" data-module="qc-closing" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="detail-header">
+                <strong>④ 结束语</strong>
+                <span class="tag tag-scene">锁客 / 未锁客</span>
+              </div>
+              <div class="detail-content">
+                明确后续动作、沟通时间、跟进方式与承接人。<br><br>
+                <span class="tag tag-output">输出</span> 收口完整度 ｜ 后续确认 ｜ 是否形成有效闭环
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Analysis -->
+      <div class="system-card module" data-module="analysis-system" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="system-header an"><svg style="width:22px;height:22px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+  
+  <path d="M48 24c-7 0-13 5-13 12 0 4 2 8 5 10-5 2-8 7-8 12 0 6 4 11 9 12-1 2-2 4-2 7 0 7 6 13 13 13h10c4 0 8-2 10-5 2 3 6 5 10 5h4c7 0 13-6 13-13 0-2-1-5-2-7 5-1 9-6 9-12 0-5-3-10-8-12 3-2 5-6 5-10 0-7-6-12-13-12-4 0-8 2-10 5-2-3-6-5-10-5h-10c-4 0-8 2-10 5-2-3-6-5-10-5z" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 36c-4 4-4 10 0 14M67 36c4 4 4 10 0 14M45 57c5-3 11-3 16 0M74 57c5-3 11-3 16 0M50 77c4-3 9-3 13 0M67 77c4-3 9-3 13 0" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 34v52" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 智能分析体系 · 客户维度（多通会话汇总）</div>
+        <div class="system-body">
+
+          <div class="agent-block">
+            <div class="agent-title an"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" fill="none">
+  
+  <path d="M60 18C44.536 18 32 30.536 32 46c0 20.9 28 48 28 48s28-27.1 28-48c0-15.464-12.536-28-28-28Z" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="46" r="10" stroke="#2563eb" stroke-width="2.5"/>
+</svg> 2.1 异议分析</div>
+
+            <div class="mini-card module" data-module="analysis-obj-stats" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="mini-title">2.1.1 异议分类统计 Agent</div>
+              <div class="mini-text">
+                对客户多次会话中的异议归因、聚类与排序。<br><br>
+                <strong>分类体系：</strong>服务异议 ｜ 保单异议 ｜ 需求异议 ｜ 竞争异议
+              </div>
+              <div class="output-box">输出：异议排行 ｜ 各类占比 ｜ 应对失败排行 ｜ 高频高损耗重合项</div>
+            </div>
+
+            <div class="mini-card module" data-module="analysis-obj-response" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="mini-title">2.1.2 异议应对方案 Agent</div>
+              <div class="mini-text">
+                输出统一、可复用、可训练的金牌应对方式。<br><br>
+                <strong>四步法：</strong>接情绪 → 解释原因 → 给选项 → 确认动作
+              </div>
+              <div class="output-box">输出：金牌话术 ｜ 禁用表达 ｜ 推荐承接语 ｜ 跟进动作</div>
+            </div>
+          </div>
+
+          <div class="agent-block">
+            <div class="agent-title an"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  
+  <circle cx="60" cy="40" r="16" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M30 92c0-16.6 13.4-30 30-30s30 13.4 30 30" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 2.2 客户分析</div>
+
+            <div class="mini-card module" data-module="analysis-profile" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="mini-title">2.2.1 客户画像标签 Agent</div>
+              <div class="mini-text">
+                识别客户偏好、价值、沟通风格与风险状态。<br><br>
+                高价值 ｜ 中价值 ｜ 低价值 ｜ 风险客户
+              </div>
+              <div class="output-box">输出：偏好标签 ｜ 风险等级 ｜ 沟通难度 ｜ 推荐接触策略</div>
+            </div>
+
+            <div class="mini-card module" data-module="analysis-strategy" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="mini-title">2.2.2 不同应对策略 Agent</div>
+              <div class="mini-text">
+                高价值快速锁客，中价值关系维护，低价值 AI 首轮触达，风险客户专人跟进。
+              </div>
+              <div class="output-box">输出：推荐沟通路径 ｜ 推荐坐席 ｜ 推荐跟进节奏</div>
+            </div>
+          </div>
+
+          <div class="agent-block">
+            <div class="agent-title an"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <path d="M20 92H100" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M28 82L48 62L66 72L86 46" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M86 46L81 46M86 46L86 51M86 46L77 55" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 2.4 结果达成分析</div>
+
+            <div class="mini-card module" data-module="analysis-result-stats" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="mini-title">2.4.1 结果达成分析 Agent</div>
+              <div class="mini-text">分析哪些动作真正推动转化，哪些因素导致失败。</div>
+              <div class="output-box">输出：成功路径 ｜ 失败路径 ｜ 高转化动作组合</div>
+            </div>
+
+            <div class="mini-card module" data-module="analysis-sop" title="点击复制此模块">
+              <span class="copy-tip">点击复制</span>
+              <div class="mini-title">2.4.2 优秀 SOP 分析 Agent</div>
+              <div class="mini-text">
+                从高转化案例中拆解可复用动作链：标准开场 → 异议处理 → 承接动作 → 收口方式
+              </div>
+              <div class="output-box">输出：标准 SOP ｜ 标准话术 ｜ 场景绑定</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ SCENE ═══ -->
+  <section class="section">
+    <div class="section-title">
+      <div class="dot"></div>
+      <h2>四、五大场景化专属质检分析规则</h2>
+    </div>
+    <div class="scenario-grid">
+      <div class="scenario-card module" data-module="scenario-multiyear" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="scenario-title"><svg style="width:18px;height:18px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  
+  <path d="M30 42h48c10 0 18 8 18 18s-8 18-18 18H42" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M48 30 30 42l18 12" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M72 90l18-12-18-12" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 平台续保 · 多年续</div>
+        <div class="scenario-sub">
+          <span class="scenario-label blue">质检重点</span>
+          <ul><li>礼仪简洁</li><li>异议快速处理</li><li>锁客效率高</li><li>避免浪费客户时间</li></ul>
+        </div>
+        <div class="scenario-sub">
+          <span class="scenario-label indigo">分析重点</span>
+          <ul><li>高价值维护</li><li>复购转化分析</li><li>过度沟通分析</li></ul>
+        </div>
+      </div>
+      <div class="scenario-card module" data-module="scenario-firstyear" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="scenario-title"><svg style="width:18px;height:18px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  
+  <g fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 42l30-18 30 18-30 18-30-18z"/>
+    <path d="M30 42v36l30 18 30-18V42"/>
+    <path d="M60 60v36"/>
+    <path d="M30 42l30 18 30-18"/>
+  </g>
+</svg> 平台续保 · 首年续</div>
+        <div class="scenario-sub">
+          <span class="scenario-label blue">质检重点</span>
+          <ul><li>关系建立</li><li>异议探查深度</li><li>留痕规范</li></ul>
+        </div>
+        <div class="scenario-sub">
+          <span class="scenario-label indigo">分析重点</span>
+          <ul><li>中价值激活</li><li>多轮沟通质检</li><li>建立信任分析</li></ul>
+        </div>
+      </div>
+      <div class="scenario-card module" data-module="scenario-online" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="scenario-title"><svg style="width:18px;height:18px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <circle cx="60" cy="60" r="42" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="60" cy="60" rx="18" ry="42" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="60" cy="60" rx="32" ry="42" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18 60H102" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M60 18C70 29 76 43 76 60C76 77 70 91 60 102C50 91 44 77 44 60C44 43 50 29 60 18Z" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 网销续保</div>
+        <div class="scenario-sub">
+          <span class="scenario-label blue">质检重点</span>
+          <ul><li>无套路话术</li><li>合规报价</li><li>真诚沟通</li></ul>
+        </div>
+        <div class="scenario-sub">
+          <span class="scenario-label indigo">分析重点</span>
+          <ul><li>价格敏感画像</li><li>接通率低原因</li><li>推销感问题</li></ul>
+        </div>
+      </div>
+      <div class="scenario-card module" data-module="scenario-default" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="scenario-title"><svg style="width:18px;height:18px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <path d="M24 56L60 28l36 28" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 52v40h56V52" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 92V68h20v24" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 兜底续保</div>
+        <div class="scenario-sub">
+          <span class="scenario-label blue">质检重点</span>
+          <ul><li>官方身份强调</li><li>价差解释</li><li>加V动作</li></ul>
+        </div>
+        <div class="scenario-sub">
+          <span class="scenario-label indigo">分析重点</span>
+          <ul><li>新客重建</li><li>高意向问题客户</li><li>避免强推感</li></ul>
+        </div>
+      </div>
+      <div class="scenario-card module" data-module="scenario-transfer" title="点击复制此模块">
+        <span class="copy-tip">点击复制</span>
+        <div class="scenario-title"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <g stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 40A32 32 0 0 1 84 37"/>
+    <path d="M79 28l7 9-11 2"/>
+    <path d="M85 80A32 32 0 0 1 36 83"/>
+    <path d="M41 92l-7-9 11-2"/>
+  </g>
+</svg> 转保业务</div>
+        <div class="scenario-sub">
+          <span class="scenario-label blue">质检重点</span>
+          <ul><li>同业对比合规</li><li>保障讲解准确</li><li>不夸大不贬低</li></ul>
+        </div>
+        <div class="scenario-sub">
+          <span class="scenario-label indigo">分析重点</span>
+          <ul><li>意向分级</li><li>坐席客户匹配</li><li>讲解不稳流失</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ LOOP ═══ -->
+  <section class="section">
+    <div class="section-title">
+      <div class="dot"></div>
+      <h2>五、闭环输出："质检—分析—运营"一体化</h2>
+    </div>
+    <div class="loop">
+      <div class="loop-flow">
+        <div class="loop-node blue module" data-module="loop-qc" title="点击复制此模块">
+          <span class="copy-tip">点击复制</span>
+          <svg style="width:22px;height:22px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <rect x="30" y="22" width="60" height="86" rx="8" ry="8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="42" y="14" width="36" height="16" rx="6" ry="6" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 42h28M46 54h28M46 66h28M46 78h18" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 质检结果
+          <small>→ 绩效考核<br>→ 一票否决告警</small>
+        </div>
+        <div class="loop-arrow">→</div>
+        <div class="loop-node indigo module" data-module="loop-analysis" title="点击复制此模块">
+          <span class="copy-tip">点击复制</span>
+          <svg style="width:22px;height:22px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+  
+  <path d="M48 24c-7 0-13 5-13 12 0 4 2 8 5 10-5 2-8 7-8 12 0 6 4 11 9 12-1 2-2 4-2 7 0 7 6 13 13 13h10c4 0 8-2 10-5 2 3 6 5 10 5h4c7 0 13-6 13-13 0-2-1-5-2-7 5-1 9-6 9-12 0-5-3-10-8-12 3-2 5-6 5-10 0-7-6-12-13-12-4 0-8 2-10 5-2-3-6-5-10-5h-10c-4 0-8 2-10 5-2-3-6-5-10-5z" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 36c-4 4-4 10 0 14M67 36c4 4 4 10 0 14M45 57c5-3 11-3 16 0M74 57c5-3 11-3 16 0M50 77c4-3 9-3 13 0M67 77c4-3 9-3 13 0" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 34v52" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 分析结果
+          <small>→ 服务能力培训<br>→ 质检规则优化<br>→ 资源调配决策</small>
+        </div>
+        <div class="loop-arrow">→</div>
+        <div class="loop-node green module" data-module="loop-script" title="点击复制此模块">
+          <span class="copy-tip">点击复制</span><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  
+  <g fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 42l30-18 30 18-30 18-30-18z"/>
+    <path d="M30 42v36l30 18 30-18V42"/>
+    <path d="M60 60v36"/>
+    <path d="M30 42l30 18 30-18"/>
+  </g>
+</svg> 金牌话术
+        </div>
+        <div class="loop-arrow">+</div>
+        <div class="loop-node green module" data-module="loop-strategy" title="点击复制此模块">
+          <span class="copy-tip">点击复制</span><svg style="width:22px;height:22px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <rect x="30" y="22" width="60" height="86" rx="8" ry="8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="42" y="14" width="36" height="16" rx="6" ry="6" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 42h28M46 54h28M46 66h28M46 78h18" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 应对策略
+        </div>
+        <div class="loop-arrow">+</div>
+        <div class="loop-node green module" data-module="loop-sop" title="点击复制此模块">
+          <span class="copy-tip">点击复制</span><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  
+  <g fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 94L26 26L94 84L84 94L24 94Z"/>
+    <path d="M39 79L45 73"/>
+    <path d="M49 70L55 64"/>
+    <path d="M58 61L64 55"/>
+    <circle cx="78" cy="49" r="12"/>
+    <path d="M70 57L61 66"/>
+    <path d="M61 66L67 72"/>
+    <path d="M67 72L77 62"/>
+    <path d="M77 62L83 68"/>
+  </g>
+</svg> 场景 SOP
+        </div>
+      </div>
+      <div class="feedback-row">
+        <div class="feedback-item"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <g stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 40A32 32 0 0 1 84 37"/>
+    <path d="M79 28l7 9-11 2"/>
+    <path d="M85 80A32 32 0 0 1 36 83"/>
+    <path d="M41 92l-7-9 11-2"/>
+  </g>
+</svg> 质检结果 → 反馈优化质检规则</div>
+        <div class="feedback-item"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <g stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 40A32 32 0 0 1 84 37"/>
+    <path d="M79 28l7 9-11 2"/>
+    <path d="M85 80A32 32 0 0 1 36 83"/>
+    <path d="M41 92l-7-9 11-2"/>
+  </g>
+</svg> 分析结果 → 反馈培训方向</div>
+        <div class="feedback-item"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <g stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 40A32 32 0 0 1 84 37"/>
+    <path d="M79 28l7 9-11 2"/>
+    <path d="M85 80A32 32 0 0 1 36 83"/>
+    <path d="M41 92l-7-9 11-2"/>
+  </g>
+</svg> SOP 迭代 → 反哺话术库</div>
+        <div class="feedback-item"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <g stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 40A32 32 0 0 1 84 37"/>
+    <path d="M79 28l7 9-11 2"/>
+    <path d="M85 80A32 32 0 0 1 36 83"/>
+    <path d="M41 92l-7-9 11-2"/>
+  </g>
+</svg> 运营数据 → 驱动框架升级</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ═══ TOOLBAR ═══ -->
+<div class="toolbar">
+  <button class="btn-copy" onclick="copyAllHTML()"><svg style="width:22px;height:22px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <rect x="30" y="22" width="60" height="86" rx="8" ry="8" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="42" y="14" width="36" height="16" rx="6" ry="6" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 42h28M46 54h28M46 66h28M46 78h18" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 复制 HTML</button>
+  <button class="btn-svg" onclick="exportSVG()"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  
+  <g fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 94L26 26L94 84L84 94L24 94Z"/>
+    <path d="M39 79L45 73"/>
+    <path d="M49 70L55 64"/>
+    <path d="M58 61L64 55"/>
+    <circle cx="78" cy="49" r="12"/>
+    <path d="M70 57L61 66"/>
+    <path d="M61 66L67 72"/>
+    <path d="M67 72L77 62"/>
+    <path d="M77 62L83 68"/>
+  </g>
+</svg> 导出 SVG</button>
+  <button class="btn-png" onclick="exportPNG()"><svg style="width:16px;height:16px;display:inline-block;vertical-align:middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  
+  <path d="M20 92H100" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M28 82L48 62L66 72L86 46" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M86 46L81 46M86 46L86 51M86 46L77 55" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg> 导出 PNG</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── click module → copy HTML ── */
+document.querySelectorAll('.module').forEach(el => {
+  el.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const clone = this.cloneNode(true);
+    clone.classList.remove('module','copied');
+    clone.querySelectorAll('.copy-tip').forEach(t => t.remove());
+    clone.removeAttribute('title');
+    clone.removeAttribute('data-module');
+    const html = clone.outerHTML;
+    navigator.clipboard.writeText(html).then(() => {
+      this.classList.add('copied');
+      showToast('✅ HTML 已复制到剪贴板');
+      setTimeout(() => this.classList.remove('copied'), 1500);
+    });
+  });
+});
+
+function copyAllHTML() {
+  const canvas = document.getElementById('canvas');
+  const clone = canvas.cloneNode(true);
+  clone.querySelectorAll('.module').forEach(el => { el.classList.remove('module','copied'); });
+  clone.querySelectorAll('.copy-tip').forEach(t => t.remove());
+  clone.querySelectorAll('[title]').forEach(el => el.removeAttribute('title'));
+  clone.querySelectorAll('[data-module]').forEach(el => el.removeAttribute('data-module'));
+  navigator.clipboard.writeText(clone.outerHTML).then(() => {
+    showToast('✅ 整页 HTML 已复制到剪贴板');
+  });
+}
+
+function exportPNG() {
+  showToast('⏳ 正在生成 PNG...');
+  if (typeof html2canvas === 'undefined') {
+    showToast('⚠️ html2canvas 未加载');
+    return;
+  }
+  html2canvas(document.getElementById('canvas'), {
+    scale: 2, backgroundColor: null, useCORS: true,
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = '太平洋保险-智能质检分析体系架构图.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ PNG 已导出（2x 高清）');
+  }).catch(err => {
+    showToast('⚠️ PNG 导出失败：' + err.message);
+  });
+}
+
+function exportSVG() {
+  const canvas = document.getElementById('canvas');
+  const styles = document.querySelector('style').outerHTML;
+  const clone = canvas.cloneNode(true);
+  clone.querySelectorAll('.module').forEach(el => { el.classList.remove('module','copied'); });
+  clone.querySelectorAll('.copy-tip').forEach(t => t.remove());
+  clone.querySelectorAll('[title]').forEach(el => el.removeAttribute('title'));
+  clone.querySelectorAll('[data-module]').forEach(el => el.removeAttribute('data-module'));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.offsetWidth}" height="${canvas.offsetHeight}">
+  <foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml">${styles}${clone.outerHTML}</div>
+  </foreignObject>
+</svg>`;
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = '太平洋保险-智能质检分析体系架构图.svg';
+  link.href = url; link.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ SVG 已导出');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+</script>
+
+</body>
+</html>
